@@ -71,7 +71,12 @@ db.serialize(() => {
 app.get('/api/processes', (req, res) => {
   const limit = req.query.limit || 100;
   db.all(
-    `SELECT * FROM processes ORDER BY timestamp DESC LIMIT ?`,
+    `SELECT p.* FROM processes p
+    INNER JOIN (
+      SELECT pid, MAX(timestamp) as max_ts FROM processes GROUP BY pid
+    ) latest ON p.pid = latest.pid AND p.timestamp = latest.max_ts
+    ORDER BY p.cpu_usage DESC
+    LIMIT ?`,
     [limit],
     (err, rows) => {
       if (err) {
@@ -147,7 +152,7 @@ app.get('/api/dashboard', (req, res) => {
       
       // Get process count
       db.get(
-        `SELECT COUNT(DISTINCT pid) as process_count FROM processes WHERE timestamp > datetime('now', '-1 minute')`,
+        `SELECT COUNT(DISTINCT pid) as process_count FROM processes WHERE timestamp > datetime('now', '-30 seconds')`,
         (err, row) => {
           if (err) {
             res.status(500).json({ error: err.message });

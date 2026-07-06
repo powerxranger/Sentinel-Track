@@ -71,6 +71,7 @@ int main(int argc, char* argv[]) {
     
     int cycle_count = 0;
     auto last_stats_time = std::chrono::steady_clock::now();
+    auto last_process_log_time = std::chrono::steady_clock::now();
     
     while (running) {
         try {
@@ -84,7 +85,6 @@ int main(int argc, char* argv[]) {
             
             // Log new processes
             for (const auto& process : new_processes) {
-                logger.logProcess(process);
                 std::cout << "[PROCESS] New: " << process.name << " (PID: " << process.pid << ")" << std::endl;
             }
             
@@ -138,6 +138,11 @@ int main(int argc, char* argv[]) {
             if (std::chrono::duration_cast<std::chrono::seconds>(current_time - last_stats_time).count() >= 10) {
                 logger.logSystemStats(system_stats);
                 last_stats_time = current_time;
+
+                for (const auto& process: current_processes) {
+                    logger.logProcess(process);
+                }
+                last_process_log_time = current_time;
                 
                 std::cout << "[STATS] CPU: " << system_stats.cpu_usage << "%, "
                          << "Memory: " << system_stats.memory_usage << "%, "

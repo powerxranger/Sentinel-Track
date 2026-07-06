@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "server": "node server/index.js",
     "build-agent": "cd agent && make",
-    "start-agent": "cd agent && ./sentineltrack",
+    "start-agent": "cd agent && sentineltrack",
     "dev-full": "concurrently \"npm run server\" \"npm run dev\""
   },
   "dependencies": {

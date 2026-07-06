@@ -6,12 +6,13 @@
 // Platform detection
 #ifdef _WIN32
     #define PLATFORM_WINDOWS
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+    #include <windows.h>
+    
     #include <psapi.h>
     #include <tlhelp32.h>
     #include <iphlpapi.h>
-    #include <winsock2.h>
-    #include <windows.h>
-    #include <ws2tcpip.h>
     #pragma comment(lib, "psapi.lib")
     #pragma comment(lib, "iphlpapi.lib")
     #pragma comment(lib, "ws2_32.lib")
