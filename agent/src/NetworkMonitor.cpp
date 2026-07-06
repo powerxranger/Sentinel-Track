@@ -2,15 +2,20 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <libproc.h>
 #include <iomanip>
 #include <algorithm>
 
 #ifdef PLATFORM_WINDOWS
+    #define _WIN32_WINNT 0x0600
+    #define WINVER 0x0600
+
     #include <winsock2.h>
+    #include <windows.h>
+    #include <ws2tcpip.h>
+    #include <psapi.h>
     #include <iphlpapi.h>
-    #include <tcpmib.h>
 #elif defined(PLATFORM_MACOS)
+    #include <libproc.h>
     #include <sys/socket.h>
     #include <netinet/in.h>
     #include <arpa/inet.h>
