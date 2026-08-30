@@ -27,7 +27,11 @@ std::string getCurrentTimestamp() {
 }
 
 void sleepMs(int milliseconds) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
+    #ifdef PLATFORM_WINDOWS
+        Sleep(milliseconds);
+    #else
+        std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
+    #endif
 }
 
 bool createDirectory(const std::string& path) {

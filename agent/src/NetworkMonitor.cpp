@@ -6,14 +6,13 @@
 #include <algorithm>
 
 #ifdef PLATFORM_WINDOWS
-    #define _WIN32_WINNT 0x0600
-    #define WINVER 0x0600
-
-    #include <winsock2.h>
     #include <windows.h>
-    #include <ws2tcpip.h>
     #include <psapi.h>
-    #include <iphlpapi.h>
+    #include <stdio.h>
+    #ifndef popen
+    #define popen _popen
+    #define pclose _pclose
+    #endif
 #elif defined(PLATFORM_MACOS)
     #include <libproc.h>
     #include <sys/socket.h>
@@ -47,50 +46,33 @@ std::vector<NetworkConnection> NetworkMonitor::parseTcpConnections() {
     std::vector<NetworkConnection> connections;
     
 #ifdef PLATFORM_WINDOWS
-    PMIB_TCPTABLE_OWNER_PID pTcpTable;
-    DWORD dwSize = 0;
-    DWORD dwRetVal = 0;
-    
-    // Get the size needed
-    dwRetVal = GetExtendedTcpTable(NULL, &dwSize, FALSE, AF_INET, TCP_TABLE_OWNER_PID_ALL, 0);
-    if (dwRetVal == ERROR_INSUFFICIENT_BUFFER) {
-        pTcpTable = (MIB_TCPTABLE_OWNER_PID*)malloc(dwSize);
-        if (pTcpTable == NULL) return connections;
-        
-        dwRetVal = GetExtendedTcpTable(pTcpTable, &dwSize, FALSE, AF_INET, TCP_TABLE_OWNER_PID_ALL, 0);
-        if (dwRetVal == NO_ERROR) {
-            for (DWORD i = 0; i < pTcpTable->dwNumEntries; i++) {
-                NetworkConnection conn;
-                conn.protocol = "TCP";
-                conn.local_ip = ipToString(pTcpTable->table[i].dwLocalAddr);
-                conn.local_port = ntohs((u_short)pTcpTable->table[i].dwLocalPort);
-                conn.remote_ip = ipToString(pTcpTable->table[i].dwRemoteAddr);
-                conn.remote_port = ntohs((u_short)pTcpTable->table[i].dwRemotePort);
-                conn.pid = pTcpTable->table[i].dwOwningPid;
-                conn.process_name = getProcessNameByPid(conn.pid);
-                
-                // Convert state
-                switch (pTcpTable->table[i].dwState) {
-                    case MIB_TCP_STATE_CLOSED: conn.state = "CLOSED"; break;
-                    case MIB_TCP_STATE_LISTEN: conn.state = "LISTEN"; break;
-                    case MIB_TCP_STATE_SYN_SENT: conn.state = "SYN_SENT"; break;
-                    case MIB_TCP_STATE_SYN_RCVD: conn.state = "SYN_RECV"; break;
-                    case MIB_TCP_STATE_ESTAB: conn.state = "ESTABLISHED"; break;
-                    case MIB_TCP_STATE_FIN_WAIT1: conn.state = "FIN_WAIT1"; break;
-                    case MIB_TCP_STATE_FIN_WAIT2: conn.state = "FIN_WAIT2"; break;
-                    case MIB_TCP_STATE_CLOSE_WAIT: conn.state = "CLOSE_WAIT"; break;
-                    case MIB_TCP_STATE_CLOSING: conn.state = "CLOSING"; break;
-                    case MIB_TCP_STATE_LAST_ACK: conn.state = "LAST_ACK"; break;
-                    case MIB_TCP_STATE_TIME_WAIT: conn.state = "TIME_WAIT"; break;
-                    default: conn.state = "UNKNOWN"; break;
-                }
-                
-                connections.push_back(conn);
-            }
-        }
-        free(pTcpTable);
+    FILE* fp = popen("netstat -an -p TCP 2>nul", "r");
+    if (!fp) return connections;
+
+    auto parseWinAddr = [](const std::string& addr, std::string& ip, int& port) {
+        size_t colon = addr.rfind(':');
+        if (colon == std::string::npos) return;
+        ip = addr.substr(0, colon);
+        try { port = std::stoi(addr.substr(colon + 1)); } catch (...) { port = 0; }
+    };
+
+    char line[512];
+    while (fgets(line, sizeof(line), fp)) {
+        char proto[16], local[64], remote[64], state[32] = "";
+        if (sscanf(line, " %15s %63s %63s %31s", proto, local, remote, state) < 3) continue;
+        if (strncmp(proto, "TCP", 3) != 0) continue;
+
+        NetworkConnection conn;
+        conn.protocol = "TCP";
+        conn.pid = 0;
+        conn.process_name = "Unknown";
+        parseWinAddr(std::string(local), conn.local_ip, conn.local_port);
+        parseWinAddr(std::string(remote), conn.remote_ip, conn.remote_port);
+        conn.state = state[0] ? std::string(state) : "UNKNOWN";
+        connections.push_back(conn);
     }
-    
+    pclose(fp);
+
 #elif defined(PLATFORM_MACOS)
     FILE* fp = popen("netstat -an -p tcp 2>/dev/null", "r");
     if (!fp) return connections;
@@ -197,34 +179,32 @@ std::vector<NetworkConnection> NetworkMonitor::parseUdpConnections() {
     std::vector<NetworkConnection> connections;
     
 #ifdef PLATFORM_WINDOWS
-    PMIB_UDPTABLE_OWNER_PID pUdpTable;
-    DWORD dwSize = 0;
-    DWORD dwRetVal = 0;
-    
-    dwRetVal = GetExtendedUdpTable(NULL, &dwSize, FALSE, AF_INET, UDP_TABLE_OWNER_PID, 0);
-    if (dwRetVal == ERROR_INSUFFICIENT_BUFFER) {
-        pUdpTable = (MIB_UDPTABLE_OWNER_PID*)malloc(dwSize);
-        if (pUdpTable == NULL) return connections;
-        
-        dwRetVal = GetExtendedUdpTable(pUdpTable, &dwSize, FALSE, AF_INET, UDP_TABLE_OWNER_PID, 0);
-        if (dwRetVal == NO_ERROR) {
-            for (DWORD i = 0; i < pUdpTable->dwNumEntries; i++) {
-                NetworkConnection conn;
-                conn.protocol = "UDP";
-                conn.local_ip = ipToString(pUdpTable->table[i].dwLocalAddr);
-                conn.local_port = ntohs((u_short)pUdpTable->table[i].dwLocalPort);
-                conn.remote_ip = "0.0.0.0";
-                conn.remote_port = 0;
-                conn.state = "ESTABLISHED";
-                conn.pid = pUdpTable->table[i].dwOwningPid;
-                conn.process_name = getProcessNameByPid(conn.pid);
-                
-                connections.push_back(conn);
-            }
-        }
-        free(pUdpTable);
+    FILE* fp = popen("netstat -an -p UDP 2>nul", "r");
+    if (!fp) return connections;
+
+    auto parseWinAddr = [](const std::string& addr, std::string& ip, int& port) {
+        size_t colon = addr.rfind(':');
+        if (colon == std::string::npos) return;
+        ip = addr.substr(0, colon);
+        try { port = std::stoi(addr.substr(colon + 1)); } catch (...) { port = 0; }
+    };
+
+    char line[512];
+    while (fgets(line, sizeof(line), fp)) {
+        char proto[16], local[64], remote[64];
+        if (sscanf(line, " %15s %63s %63s", proto, local, remote) < 2) continue;
+        if (strncmp(proto, "UDP", 3) != 0) continue;
+
+        NetworkConnection conn;
+        conn.protocol = "UDP";
+        conn.state = "ESTABLISHED";
+        conn.pid = 0;
+        conn.process_name = "Unknown";
+        parseWinAddr(std::string(local), conn.local_ip, conn.local_port);
+        connections.push_back(conn);
     }
-    
+    pclose(fp);
+
 #elif defined(PLATFORM_MACOS)
     FILE* fp = popen("netstat -an -p udp 2>/dev/null", "r");
     if (!fp) return connections;

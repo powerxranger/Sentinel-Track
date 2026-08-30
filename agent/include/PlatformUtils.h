@@ -5,7 +5,9 @@
 
 // Platform detection
 #ifdef _WIN32
+    #ifndef PLATFORM_WINDOWS
     #define PLATFORM_WINDOWS
+    #endif
     #include <winsock2.h>
     #include <ws2tcpip.h>
     #include <windows.h>
@@ -13,9 +15,11 @@
     #include <psapi.h>
     #include <tlhelp32.h>
     #include <iphlpapi.h>
+    #ifdef _MSC_VER
     #pragma comment(lib, "psapi.lib")
     #pragma comment(lib, "iphlpapi.lib")
     #pragma comment(lib, "ws2_32.lib")
+    #endif
 #elif __APPLE__
     #ifndef PLATFORM_MACOS
     #define PLATFORM_MACOS

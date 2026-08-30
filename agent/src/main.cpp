@@ -24,6 +24,16 @@ void signalHandler(int signal) {
     running = 0;
 }
 
+#ifdef PLATFORM_WINDOWS
+static BOOL WINAPI consoleCtrlHandler(DWORD dwCtrlType) {
+    if (dwCtrlType == CTRL_C_EVENT || dwCtrlType == CTRL_CLOSE_EVENT) {
+        running = 0;
+        return TRUE;
+    }
+    return FALSE;
+}
+#endif
+
 void printBanner() {
     std::cout << "================================================" << std::endl;
     std::cout << "        SentinelTrack System Monitor" << std::endl;
@@ -40,13 +50,7 @@ int main(int argc, char* argv[]) {
     
     // Set up signal handlers for graceful shutdown
 #ifdef PLATFORM_WINDOWS
-    SetConsoleCtrlHandler([](DWORD dwCtrlType) -> BOOL {
-        if (dwCtrlType == CTRL_C_EVENT || dwCtrlType == CTRL_CLOSE_EVENT) {
-            running = 0;
-            return TRUE;
-        }
-        return FALSE;
-    }, TRUE);
+    SetConsoleCtrlHandler(consoleCtrlHandler, TRUE);
 #else
     signal(SIGINT, signalHandler);
     signal(SIGTERM, signalHandler);

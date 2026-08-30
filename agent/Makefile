@@ -6,14 +6,17 @@ UNAME_M := $(shell uname -m)
 
 # Compiler settings
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -pthread
+CXXFLAGS = -std=gnu++17 -Wall -Wextra -O2 -pthread
 INCLUDES = -Iinclude
 
 # Platform-specific settings
 ifeq ($(OS),Windows_NT)
-    # Windows (MinGW)
+    # Windows (MinGW) -- sqlite3 compiled directly from sqlite/ amalgamation
     PLATFORM = WINDOWS
-    LIBS = -lsqlite3 -lpsapi -liphlpapi -lws2_32
+    CXXFLAGS += -D_WIN32_WINNT=0x0601 -DWINVER=0x0601
+    LIBS = -lpsapi -liphlpapi -lws2_32
+    INCLUDES += -Isqlite
+    SQLITE_OBJ = sqlite/sqlite3.o
     TARGET = sentineltrack.exe
     RM = del /Q
     MKDIR = mkdir
@@ -21,6 +24,7 @@ else ifeq ($(UNAME_S),Darwin)
     # macOS
     PLATFORM = MACOS
     LIBS = -lsqlite3
+    SQLITE_OBJ =
     TARGET = sentineltrack
     RM = rm -f
     MKDIR = mkdir -p
@@ -33,6 +37,7 @@ else
     # Linux
     PLATFORM = LINUX
     LIBS = -lsqlite3
+    SQLITE_OBJ =
     TARGET = sentineltrack
     RM = rm -f
     MKDIR = mkdir -p
@@ -48,10 +53,15 @@ OBJECTS = $(SOURCES:$(SRCDIR)/%.cpp=$(OBJDIR)/%.o)
 
 all: $(TARGET)
 
-$(TARGET): $(OBJECTS)
+$(TARGET): $(OBJECTS) $(SQLITE_OBJ)
 	@echo "Linking $(TARGET) for $(PLATFORM)..."
-	@$(CXX) $(OBJECTS) -o $@ $(LIBS)
+	@$(CXX) $(OBJECTS) $(SQLITE_OBJ) -o $@ $(LIBS)
 	@echo "Build complete for $(PLATFORM)!"
+
+# Compile bundled sqlite3 amalgamation (Windows only)
+sqlite/sqlite3.o: sqlite/sqlite3.c
+	@echo "Compiling bundled sqlite3..."
+	@gcc -O2 -c sqlite/sqlite3.c -o sqlite/sqlite3.o
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp | $(OBJDIR)
 	@echo "Compiling $< for $(PLATFORM)..."
@@ -64,6 +74,7 @@ clean:
 	@echo "Cleaning build files..."
 	@$(RM) $(OBJDIR)/*.o 2>/dev/null || true
 	@$(RM) $(TARGET) 2>/dev/null || true
+	@$(RM) sqlite/sqlite3.o 2>/dev/null || true
 	@echo "Clean complete!"
 
 # Platform-specific install targets
