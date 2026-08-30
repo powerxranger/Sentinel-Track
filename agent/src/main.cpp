@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
     // Initialize components
     ProcessMonitor processMonitor;
     NetworkMonitor networkMonitor;
-    EventLogger logger("../data/sentineltrack.db", "../data/sentineltrack.log");
+    EventLogger logger("../data/sentineltrack.db");
     AnomalyDetector anomalyDetector;
     
     if (!logger.isInitialized()) {

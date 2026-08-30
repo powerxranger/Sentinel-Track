@@ -4,28 +4,18 @@
 #include <chrono>
 #include <iomanip>
 #include <sstream>
-#include <fstream>
 
-EventLogger::EventLogger(const std::string& db_file, const std::string& json_file) 
-    : db(nullptr), db_path(db_file), json_path(json_file) {
-    
+EventLogger::EventLogger(const std::string& db_file)
+    : db(nullptr), db_path(db_file) {
+
     if (!initializeDatabase()) {
         std::cerr << "Failed to initialize database: " << db_path << std::endl;
-        return;
-    }
-    
-    json_log.open(json_path, std::ios::app);
-    if (!json_log.is_open()) {
-        std::cerr << "Failed to open JSON log file: " << json_path << std::endl;
     }
 }
 
 EventLogger::~EventLogger() {
     if (db) {
         sqlite3_close(db);
-    }
-    if (json_log.is_open()) {
-        json_log.close();
     }
 }
 
@@ -116,14 +106,6 @@ std::string EventLogger::getCurrentTimestamp() {
     return PlatformUtils::getCurrentTimestamp();
 }
 
-void EventLogger::logToJson(const std::string& event_type, const std::string& data) {
-    if (!json_log.is_open()) return;
-    
-    std::string timestamp = getCurrentTimestamp();
-    json_log << "{\"timestamp\":\"" << timestamp << "\",\"type\":\"" << event_type 
-             << "\",\"data\":" << data << "}" << std::endl;
-    json_log.flush();
-}
 
 void EventLogger::logProcess(const ProcessInfo& process) {
     if (!db) return;
@@ -140,13 +122,6 @@ void EventLogger::logProcess(const ProcessInfo& process) {
         sqlite3_step(stmt);
         sqlite3_finalize(stmt);
     }
-    
-    // Log to JSON
-    std::stringstream json_data;
-    json_data << "{\"pid\":" << process.pid << ",\"name\":\"" << process.name 
-              << "\",\"cpu_usage\":" << process.cpu_usage 
-              << ",\"memory_usage\":" << process.memory_usage << "}";
-    logToJson("process", json_data.str());
 }
 
 void EventLogger::logNetworkConnection(const NetworkConnection& connection) {
@@ -166,13 +141,6 @@ void EventLogger::logNetworkConnection(const NetworkConnection& connection) {
         sqlite3_step(stmt);
         sqlite3_finalize(stmt);
     }
-    
-    // Log to JSON
-    std::stringstream json_data;
-    json_data << "{\"local_ip\":\"" << connection.local_ip << "\",\"local_port\":" << connection.local_port
-              << ",\"remote_ip\":\"" << connection.remote_ip << "\",\"remote_port\":" << connection.remote_port
-              << ",\"protocol\":\"" << connection.protocol << "\",\"state\":\"" << connection.state << "\"}";
-    logToJson("network", json_data.str());
 }
 
 void EventLogger::logAlert(const std::string& type, const std::string& severity, 
@@ -191,12 +159,6 @@ void EventLogger::logAlert(const std::string& type, const std::string& severity,
         sqlite3_step(stmt);
         sqlite3_finalize(stmt);
     }
-    
-    // Log to JSON
-    std::stringstream json_data;
-    json_data << "{\"type\":\"" << type << "\",\"severity\":\"" << severity
-              << "\",\"message\":\"" << message << "\",\"details\":\"" << details << "\"}";
-    logToJson("alert", json_data.str());
 }
 
 void EventLogger::logSystemStats(const SystemStats& stats) {
@@ -214,12 +176,6 @@ void EventLogger::logSystemStats(const SystemStats& stats) {
         sqlite3_step(stmt);
         sqlite3_finalize(stmt);
     }
-    
-    // Log to JSON
-    std::stringstream json_data;
-    json_data << "{\"cpu_usage\":" << stats.cpu_usage << ",\"memory_usage\":" << stats.memory_usage
-              << ",\"disk_usage\":" << stats.disk_usage << ",\"load_average\":" << stats.load_average << "}";
-    logToJson("system_stats", json_data.str());
 }
 
 SystemStats EventLogger::getSystemStats() {
@@ -239,7 +195,4 @@ bool EventLogger::isInitialized() const {
 }
 
 void EventLogger::flushLogs() {
-    if (json_log.is_open()) {
-        json_log.flush();
-    }
 }

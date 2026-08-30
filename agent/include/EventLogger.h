@@ -2,7 +2,6 @@
 #define EVENT_LOGGER_H
 
 #include <string>
-#include <fstream>
 #include <sqlite3.h>
 #include "ProcessMonitor.h"
 #include "NetworkMonitor.h"
@@ -33,16 +32,13 @@ struct SystemStats {
 class EventLogger {
 private:
     sqlite3* db;
-    std::ofstream json_log;
     std::string db_path;
-    std::string json_path;
-    
+
     bool initializeDatabase();
-    void logToJson(const std::string& event_type, const std::string& data);
     std::string getCurrentTimestamp();
 
 public:
-    EventLogger(const std::string& db_file, const std::string& json_file);
+    EventLogger(const std::string& db_file);
     ~EventLogger();
     
     void logProcess(const ProcessInfo& process);

@@ -1,10 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import sqlite3 from 'sqlite3';
-import { WebSocketServer } from 'ws';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -81,7 +79,9 @@ app.get('/api/processes', (req, res) => {
   db.all(
     `SELECT p.* FROM processes p
     INNER JOIN (
-      SELECT pid, MAX(timestamp) as max_ts FROM processes GROUP BY pid
+      SELECT pid, MAX(timestamp) as max_ts FROM processes
+      WHERE timestamp > datetime('now', '-60 seconds')
+      GROUP BY pid
     ) latest ON p.pid = latest.pid AND p.timestamp = latest.max_ts
     ORDER BY p.cpu_usage DESC
     LIMIT ?`,
@@ -100,7 +100,7 @@ app.get('/api/processes', (req, res) => {
 app.get('/api/network', (req, res) => {
   const limit = req.query.limit || 100;
   db.all(
-    `SELECT * FROM network_connections ORDER BY timestamp DESC LIMIT ?`,
+    `SELECT * FROM network_connections WHERE timestamp > datetime('now', '-60 seconds') ORDER BY timestamp DESC LIMIT ?`,
     [limit],
     (err, rows) => {
       if (err) {
@@ -160,7 +160,7 @@ app.get('/api/dashboard', (req, res) => {
       
       // Get process count
       db.get(
-        `SELECT COUNT(DISTINCT pid) as process_count FROM processes WHERE timestamp > datetime('now', '-30 seconds')`,
+        `SELECT COUNT(DISTINCT pid) as process_count FROM processes WHERE timestamp > datetime('now', '-60 seconds')`,
         (err, row) => {
           if (err) {
             res.status(500).json({ error: err.message });
@@ -170,7 +170,7 @@ app.get('/api/dashboard', (req, res) => {
           
           // Get network connection count
           db.get(
-            `SELECT COUNT(DISTINCT local_ip || ':' || local_port || '-' || remote_ip || ':' || remote_port) as connection_count FROM network_connections WHERE timestamp > datetime('now', '-30 seconds')`,
+            `SELECT COUNT(DISTINCT local_ip || ':' || local_port || '-' || remote_ip || ':' || remote_port) as connection_count FROM network_connections WHERE timestamp > datetime('now', '-60 seconds')`,
             (err, row) => {
               if (err) {
                 res.status(500).json({ error: err.message });
@@ -180,7 +180,7 @@ app.get('/api/dashboard', (req, res) => {
               
               // Get alert count
               db.get(
-                `SELECT COUNT(*) as alert_count FROM alerts WHERE timestamp > datetime('now', '-1 hour')`,
+                `SELECT COUNT(*) as alert_count FROM alerts WHERE timestamp > datetime('now', '-24 hours')`,
                 (err, row) => {
                   if (err) {
                     res.status(500).json({ error: err.message });
@@ -199,28 +199,6 @@ app.get('/api/dashboard', (req, res) => {
 });
 
 // Start server
-const server = app.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`SentinelTrack API Server running on port ${PORT}`);
 });
-
-// WebSocket server for real-time updates
-const wss = new WebSocketServer({ server });
-
-wss.on('connection', (ws) => {
-  console.log('Client connected to WebSocket');
-  
-  ws.on('close', () => {
-    console.log('Client disconnected from WebSocket');
-  });
-});
-
-// Broadcast updates to all connected clients
-export const broadcastUpdate = (type, data) => {
-  wss.clients.forEach((client) => {
-    if (client.readyState === 1) { // WebSocket.OPEN
-      client.send(JSON.stringify({ type, data }));
-    }
-  });
-};
-
-console.log('SentinelTrack API Server initialized');
