@@ -18,12 +18,11 @@ A comprehensive system monitoring solution that works on **Linux**, **macOS (inc
    - Network connection monitoring
    - Anomaly detection engine
    - SQLite database logging
-   - JSON file logging
 
 2. **Node.js API Server** (`/server/`)
    - Express.js REST API
    - SQLite database interface
-   - WebSocket support for real-time updates
+   - HTTP polling endpoints for the dashboard
    
 
 3. **React Dashboard** (`/src/`)
@@ -34,6 +33,16 @@ A comprehensive system monitoring solution that works on **Linux**, **macOS (inc
    - Security alerts management
    - Responsive design with dark theme
    
+
+## Screenshots
+
+| Dashboard | Processes |
+|-----------|-----------|
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Processes](docs/screenshots/processes.png) |
+
+| Network | Alerts |
+|---------|--------|
+| ![Network](docs/screenshots/network.png) | ![Alerts](docs/screenshots/alerts.png) |
 
 ## Installation & Setup
 
@@ -207,10 +216,20 @@ Edit `agent/src/AnomalyDetector.cpp` to modify:
 - Process creation rate limits
 - Network connection rate limits
 
+### Dashboard Process Status Thresholds
+The Processes tab classifies each process into one of three status levels:
+
+| Status   | CPU        | RAM       |
+|----------|------------|-----------|
+| Normal   | <= 20%     | <= 1 GB   |
+| Moderate | > 20% CPU  | > 1 GB    |
+| High     | > 80% CPU  | > 2 GB    |
+
+The "High CPU Usage" and "High Memory Usage" stat cards count processes exceeding the **Moderate** threshold (>20% CPU or >1 GB RAM).
+
 ### Database Location
 By default, data is stored in:
 - Database: `./data/sentineltrack.db`
-- JSON logs: `./data/sentineltrack.log`
 
 ## Troubleshooting
 
