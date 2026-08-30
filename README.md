@@ -2,6 +2,20 @@
 
 A comprehensive system monitoring solution that works on **Linux**, **macOS (including M1)**, and **Windows**. Consists of a C++ agent for real-time system monitoring and a React-based web dashboard for visualization and analysis.
 
+## Screenshots
+
+### Dashboard
+![Dashboard](docs/screenshots/dashboard.png)
+
+### Processes
+![Processes](docs/screenshots/processes.png)
+
+### Network
+![Network](docs/screenshots/network.png)
+
+### Alerts
+![Alerts](docs/screenshots/alerts.png)
+
 ## Supported Platforms
 
 - ✅ **Linux** (Ubuntu, Debian, CentOS, RHEL, etc.)
@@ -34,15 +48,23 @@ A comprehensive system monitoring solution that works on **Linux**, **macOS (inc
    - Responsive design with dark theme
    
 
-## Screenshots
+## Quick Start
 
-| Dashboard | Processes |
-|-----------|-----------|
-| ![Dashboard](docs/screenshots/dashboard.png) | ![Processes](docs/screenshots/processes.png) |
+```bash
+# Step 0 -- install dependencies
+npm install
 
-| Network | Alerts |
-|---------|--------|
-| ![Network](docs/screenshots/network.png) | ![Alerts](docs/screenshots/alerts.png) |
+# Step 1 -- build the C++ agent
+npm run build-agent
+
+# Step 2 -- start the agent (run as Administrator on Windows, sudo on macOS/Linux for full access)
+npm run start-agent
+
+# Step 3 -- start the API server + dashboard
+npm run dev-full
+```
+
+Then open **http://localhost:5173** in your browser.
 
 ## Installation & Setup
 
