@@ -92,9 +92,9 @@ const ProcessMonitor: React.FC = () => {
   };
 
   const getProcessStatusColor = (cpu: number, memory: number) => {
-    if (cpu > 80 || memory > 1024 * 1024) { // > 1GB
+    if (cpu > 80 || memory > 2 * 1024 * 1024) { // > 80% CPU or > 2 GB RAM
       return 'text-red-400';
-    } else if (cpu > 50 || memory > 512 * 1024) { // > 512MB
+    } else if (cpu > 20 || memory > 1024 * 1024) { // > 20% CPU or > 1 GB RAM
       return 'text-yellow-400';
     } else {
       return 'text-green-400';
@@ -155,20 +155,22 @@ const ProcessMonitor: React.FC = () => {
             <div>
               <p className="text-sm text-slate-400">High CPU Usage</p>
               <p className="text-xl font-bold text-white">
-                {filteredAndSortedProcesses.filter(p => p.cpu_usage > 50).length}
+                {filteredAndSortedProcesses.filter(p => p.cpu_usage > 20).length}
               </p>
+              <p className="text-xs text-slate-500 mt-0.5">processes using &gt;20% CPU</p>
             </div>
           </div>
         </div>
-        
+
         <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg p-4 border border-slate-700">
           <div className="flex items-center space-x-3">
             <AlertCircle className="h-8 w-8 text-red-400" />
             <div>
               <p className="text-sm text-slate-400">High Memory Usage</p>
               <p className="text-xl font-bold text-white">
-                {filteredAndSortedProcesses.filter(p => p.memory_usage > 512 * 1024).length}
+                {filteredAndSortedProcesses.filter(p => p.memory_usage > 1024 * 1024).length}
               </p>
+              <p className="text-xs text-slate-500 mt-0.5">processes using &gt;1 GB RAM</p>
             </div>
           </div>
         </div>
@@ -246,8 +248,11 @@ const ProcessMonitor: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getProcessStatusColor(process.cpu_usage, process.memory_usage)}`}>
-                      {process.cpu_usage > 80 || process.memory_usage > 1024 * 1024 ? 'High Usage' :
-                       process.cpu_usage > 50 || process.memory_usage > 512 * 1024 ? 'Moderate' : 'Normal'}
+                      {process.cpu_usage > 80 || process.memory_usage > 2 * 1024 * 1024
+                        ? 'High (CPU >80% or RAM >2 GB)'
+                        : process.cpu_usage > 20 || process.memory_usage > 1024 * 1024
+                        ? 'Moderate (CPU >20% or RAM >1 GB)'
+                        : 'Normal'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
