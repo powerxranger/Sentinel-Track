@@ -20,7 +20,7 @@ const ProcessMonitor: React.FC = () => {
   useEffect(() => {
     const fetchProcesses = async () => {
       try {
-        const response = await fetch('http://localhost:3001/api/processes?limit=200');
+        const response = await fetch('http://localhost:3001/api/processes?limit=1000');
         if (response.ok) {
           const data = await response.json();
           setProcesses(data);
@@ -157,7 +157,9 @@ const ProcessMonitor: React.FC = () => {
               <p className="text-xl font-bold text-white">
                 {filteredAndSortedProcesses.filter(p => p.cpu_usage > 20).length}
               </p>
-              <p className="text-xs text-slate-500 mt-0.5">processes using &gt;20% CPU</p>
+              <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-900/30 text-yellow-400 border border-yellow-700/40">
+                threshold: &gt;20% CPU
+              </span>
             </div>
           </div>
         </div>
@@ -170,7 +172,9 @@ const ProcessMonitor: React.FC = () => {
               <p className="text-xl font-bold text-white">
                 {filteredAndSortedProcesses.filter(p => p.memory_usage > 1024 * 1024).length}
               </p>
-              <p className="text-xs text-slate-500 mt-0.5">processes using &gt;1 GB RAM</p>
+              <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-900/30 text-red-400 border border-red-700/40">
+                threshold: &gt;1 GB RAM
+              </span>
             </div>
           </div>
         </div>
@@ -249,9 +253,9 @@ const ProcessMonitor: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getProcessStatusColor(process.cpu_usage, process.memory_usage)}`}>
                       {process.cpu_usage > 80 || process.memory_usage > 2 * 1024 * 1024
-                        ? 'High (CPU >80% or RAM >2 GB)'
+                        ? 'High'
                         : process.cpu_usage > 20 || process.memory_usage > 1024 * 1024
-                        ? 'Moderate (CPU >20% or RAM >1 GB)'
+                        ? 'Moderate'
                         : 'Normal'}
                     </span>
                   </td>

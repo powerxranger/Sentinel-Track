@@ -21,6 +21,7 @@ class ProcessMonitor {
 private:
     std::unordered_map<int, ProcessInfo> previous_processes;
     std::unordered_map<int, unsigned long long> previous_cpu_times;
+    std::unordered_map<int, std::string> process_name_cache;
     std::set<int> previous_pid_set;
     unsigned long long previous_total_cpu_time;
     unsigned long long snapshot_total_cpu_time;
@@ -40,7 +41,7 @@ public:
     void updateProcessList();
     
     // Utility functions
-    static std::vector<int> getAllPids();
+    std::vector<int> getAllPids();
     static long getSystemMemoryTotal();
     static long getSystemMemoryUsed();
 };

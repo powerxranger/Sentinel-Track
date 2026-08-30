@@ -36,16 +36,19 @@ std::vector<int> ProcessMonitor::getAllPids() {
     if (hProcessSnap == INVALID_HANDLE_VALUE) {
         return pids;
     }
-    
+
     PROCESSENTRY32 pe32;
     pe32.dwSize = sizeof(PROCESSENTRY32);
-    
+
+    process_name_cache.clear();
     if (Process32First(hProcessSnap, &pe32)) {
         do {
             pids.push_back(pe32.th32ProcessID);
+            // szExeFile works for both 32-bit and 64-bit processes -- use as name fallback
+            process_name_cache[(int)pe32.th32ProcessID] = std::string(pe32.szExeFile);
         } while (Process32Next(hProcessSnap, &pe32));
     }
-    
+
     CloseHandle(hProcessSnap);
     
 #elif defined(PLATFORM_MACOS)
@@ -103,21 +106,36 @@ ProcessInfo ProcessMonitor::parseProcessInfo(int pid) {
     info.command = "Unknown";
     
 #ifdef PLATFORM_WINDOWS
+    // Try full access first; fall back to limited (catches more processes, e.g. some services)
     HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+    bool limited_access = false;
+    if (!hProcess) {
+        hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid);
+        limited_access = true;
+    }
+
     if (hProcess) {
-        // Get process name
-        char processName[MAX_PATH];
+        // GetModuleBaseNameA fails for 64-bit processes from a 32-bit agent.
+        // Use the snapshot name cache as the reliable fallback.
+        char processName[MAX_PATH] = "";
         if (GetModuleBaseNameA(hProcess, NULL, processName, sizeof(processName))) {
             info.name = std::string(processName);
+        } else {
+            auto it = process_name_cache.find(pid);
+            if (it != process_name_cache.end()) {
+                info.name = it->second;
+            }
         }
-        
-        // Get memory usage
-        PROCESS_MEMORY_COUNTERS pmc;
-        if (GetProcessMemoryInfo(hProcess, &pmc, sizeof(pmc))) {
-            info.memory_usage = pmc.WorkingSetSize / 1024; // Convert to KB
+
+        // Memory (only available with PROCESS_VM_READ)
+        if (!limited_access) {
+            PROCESS_MEMORY_COUNTERS pmc;
+            if (GetProcessMemoryInfo(hProcess, &pmc, sizeof(pmc))) {
+                info.memory_usage = pmc.WorkingSetSize / 1024;
+            }
         }
-        
-        // Get CPU usage (simplified)
+
+        // CPU -- GetProcessTimes works across 32/64-bit boundary
         FILETIME creationTime, exitTime, kernelTime, userTime;
         if (GetProcessTimes(hProcess, &creationTime, &exitTime, &kernelTime, &userTime)) {
             ULARGE_INTEGER kt, ut;
@@ -125,13 +143,19 @@ ProcessInfo ProcessMonitor::parseProcessInfo(int pid) {
             kt.HighPart = kernelTime.dwHighDateTime;
             ut.LowPart = userTime.dwLowDateTime;
             ut.HighPart = userTime.dwHighDateTime;
-            
-            unsigned long long totalTime = kt.QuadPart + ut.QuadPart;
-            info.cpu_usage = calculateCpuUsage(pid, totalTime);
+            info.cpu_usage = calculateCpuUsage(pid, kt.QuadPart + ut.QuadPart);
         }
-        
+
         info.state = "Running";
         CloseHandle(hProcess);
+    } else {
+        // Process exists (we got its PID from snapshot) but we can't open it (e.g. System, protected).
+        // Still show it with name from cache and 0 metrics.
+        auto it = process_name_cache.find(pid);
+        if (it != process_name_cache.end()) {
+            info.name = it->second;
+            info.state = "Running";
+        }
     }
     
 #elif defined(PLATFORM_MACOS)
@@ -302,6 +326,11 @@ double ProcessMonitor::calculateCpuUsage(int pid, unsigned long long current_cpu
         return 0.0;
     }
 
+    if (current_cpu_time < previous_cpu_times[pid]) {
+        previous_cpu_times[pid] = current_cpu_time;
+        return 0.0;
+    }
+
     unsigned long long cpu_time_delta = current_cpu_time - previous_cpu_times[pid];
     unsigned long long total_cpu_time_delta = snapshot_total_cpu_time - previous_total_cpu_time;
 
@@ -311,7 +340,8 @@ double ProcessMonitor::calculateCpuUsage(int pid, unsigned long long current_cpu
         return 0.0;
     }
 
-    return (static_cast<double>(cpu_time_delta) / total_cpu_time_delta) * 100.0;
+    double result = (static_cast<double>(cpu_time_delta) / total_cpu_time_delta) * 100.0;
+    return (result > 100.0) ? 0.0 : result;
 }
 
 // Returns cached result from last updateProcessList() -- no recalculation to avoid double-call delta=0 bug
