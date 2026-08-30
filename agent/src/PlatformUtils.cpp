@@ -65,6 +65,8 @@ std::string getExecutablePath() {
 #endif
 }
 
+static double s_lastCpuUsage = 0.0;
+
 double getCpuUsage() {
 #ifdef PLATFORM_WINDOWS
     FILETIME idleFt, kernelFt, userFt;
@@ -89,9 +91,10 @@ double getCpuUsage() {
     lastIdle = idle; lastKernel = kernel; lastUser = user;
 
     unsigned long long total = kernelDelta + userDelta;
-    if (total == 0) return 0.0;
+    if (total == 0) return s_lastCpuUsage;
     // kernelDelta includes idle time on Windows
-    return (double)(total - idleDelta) / total * 100.0;
+    s_lastCpuUsage = (double)(total - idleDelta) / total * 100.0;
+    return s_lastCpuUsage;
     
 #elif defined(PLATFORM_MACOS)
     host_cpu_load_info_data_t cpuinfo;
@@ -229,8 +232,8 @@ long getTotalMemory() {
 
 double getLoadAverage() {
 #ifdef PLATFORM_WINDOWS
-    // Windows doesn't have load average, return CPU usage as approximation
-    return getCpuUsage() / 100.0;
+    // Windows doesn't have load average; return last CPU %
+    return s_lastCpuUsage;
     
 #elif defined(PLATFORM_MACOS)
     double loadavg[3];

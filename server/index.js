@@ -65,6 +65,14 @@ db.serialize(() => {
   )`);
 });
 
+// Periodic cleanup to prevent unbounded DB growth
+setInterval(() => {
+  db.run(`DELETE FROM processes WHERE timestamp < datetime('now', '-1 hour')`);
+  db.run(`DELETE FROM network_connections WHERE timestamp < datetime('now', '-1 hour')`);
+  db.run(`DELETE FROM system_stats WHERE timestamp < datetime('now', '-24 hours')`);
+  db.run(`DELETE FROM alerts WHERE timestamp < datetime('now', '-24 hours')`);
+}, 5 * 60 * 1000);
+
 // API Routes
 
 // Get recent processes

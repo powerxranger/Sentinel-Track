@@ -47,7 +47,7 @@ const Dashboard: React.FC = () => {
     };
 
     fetchData();
-    const interval = setInterval(fetchData, 5000); // Update every 5 seconds
+    const interval = setInterval(fetchData, 2000); // Update every 2 seconds
 
     return () => clearInterval(interval);
   }, []);
@@ -61,7 +61,7 @@ const Dashboard: React.FC = () => {
   }
 
   const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString('en-US', { 
+    return new Date(timestamp + 'Z').toLocaleTimeString('en-US', { 
       hour12: false, 
       hour: '2-digit', 
       minute: '2-digit' 

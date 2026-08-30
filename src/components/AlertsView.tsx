@@ -32,7 +32,7 @@ const AlertsView: React.FC = () => {
     };
 
     fetchAlerts();
-    const interval = setInterval(fetchAlerts, 10000); // Update every 10 seconds
+    const interval = setInterval(fetchAlerts, 3000); // Update every 3 seconds
 
     return () => clearInterval(interval);
   }, []);

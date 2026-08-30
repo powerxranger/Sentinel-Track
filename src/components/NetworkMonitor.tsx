@@ -35,7 +35,7 @@ const NetworkMonitor: React.FC = () => {
     };
 
     fetchConnections();
-    const interval = setInterval(fetchConnections, 5000); // Update every 5 seconds
+    const interval = setInterval(fetchConnections, 2000); // Update every 2 seconds
 
     return () => clearInterval(interval);
   }, []);

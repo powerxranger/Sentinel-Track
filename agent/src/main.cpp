@@ -139,7 +139,7 @@ int main(int argc, char* argv[]) {
             
             // Log system statistics every 10 cycles (approximately every 10 seconds)
             auto current_time = std::chrono::steady_clock::now();
-            if (std::chrono::duration_cast<std::chrono::seconds>(current_time - last_stats_time).count() >= 10) {
+            if (std::chrono::duration_cast<std::chrono::seconds>(current_time - last_stats_time).count() >= 3) {
                 logger.logSystemStats(system_stats);
                 last_stats_time = current_time;
 
