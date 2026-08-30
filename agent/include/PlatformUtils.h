@@ -46,6 +46,7 @@ namespace PlatformUtils {
     // Platform-specific system info
     double getCpuUsage();
     long getMemoryUsage();
+    long getTotalMemory();
     double getLoadAverage();
 }
 

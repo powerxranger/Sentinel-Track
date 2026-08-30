@@ -20,7 +20,7 @@
     #include <sys/stat.h>
 #endif
 
-ProcessMonitor::ProcessMonitor() : previous_total_cpu_time(0) {
+ProcessMonitor::ProcessMonitor() : previous_total_cpu_time(0), snapshot_total_cpu_time(0) {
     updateProcessList();
 }
 
@@ -297,27 +297,21 @@ unsigned long long ProcessMonitor::getProcessCpuTime(int pid) {
 }
 
 double ProcessMonitor::calculateCpuUsage(int pid, unsigned long long current_cpu_time) {
-    unsigned long long current_total_cpu_time = getTotalCpuTime();
-    
     if (previous_cpu_times.find(pid) == previous_cpu_times.end() || previous_total_cpu_time == 0) {
         previous_cpu_times[pid] = current_cpu_time;
-        previous_total_cpu_time = current_total_cpu_time;
         return 0.0;
     }
-    
+
     unsigned long long cpu_time_delta = current_cpu_time - previous_cpu_times[pid];
-    unsigned long long total_cpu_time_delta = current_total_cpu_time - previous_total_cpu_time;
-    
+    unsigned long long total_cpu_time_delta = snapshot_total_cpu_time - previous_total_cpu_time;
+
+    previous_cpu_times[pid] = current_cpu_time;
+
     if (total_cpu_time_delta == 0) {
         return 0.0;
     }
-    
-    double cpu_usage = (static_cast<double>(cpu_time_delta) / total_cpu_time_delta) * 100.0;
-    
-    previous_cpu_times[pid] = current_cpu_time;
-    previous_total_cpu_time = current_total_cpu_time;
-    
-    return cpu_usage;
+
+    return (static_cast<double>(cpu_time_delta) / total_cpu_time_delta) * 100.0;
 }
 
 std::vector<ProcessInfo> ProcessMonitor::getCurrentProcesses() {
@@ -366,12 +360,15 @@ std::vector<int> ProcessMonitor::getTerminatedProcesses() {
 }
 
 void ProcessMonitor::updateProcessList() {
+    snapshot_total_cpu_time = getTotalCpuTime();
     previous_processes.clear();
     auto current_processes = getCurrentProcesses();
-    
+
     for (const auto& process : current_processes) {
         previous_processes[process.pid] = process;
     }
+
+    previous_total_cpu_time = snapshot_total_cpu_time;
 }
 
 long ProcessMonitor::getSystemMemoryTotal() {

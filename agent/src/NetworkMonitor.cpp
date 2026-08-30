@@ -92,21 +92,37 @@ std::vector<NetworkConnection> NetworkMonitor::parseTcpConnections() {
     }
     
 #elif defined(PLATFORM_MACOS)
-    // macOS implementation using sysctl
-    size_t len;
-    if (sysctlbyname("net.inet.tcp.pcblist", NULL, &len, NULL, 0) < 0) {
-        return connections;
+    FILE* fp = popen("netstat -an -p tcp 2>/dev/null", "r");
+    if (!fp) return connections;
+
+    auto parseNetstatAddr = [](const std::string& addr, std::string& ip, int& port) {
+        size_t last_dot = addr.rfind('.');
+        if (last_dot == std::string::npos) return;
+        ip = addr.substr(0, last_dot);
+        if (ip == "*") ip = "0.0.0.0";
+        try { port = std::stoi(addr.substr(last_dot + 1)); }
+        catch (...) { port = 0; }
+    };
+
+    char line[512];
+    while (fgets(line, sizeof(line), fp)) {
+        if (strncmp(line, "tcp", 3) != 0) continue;
+        char proto[16], local_addr[64], remote_addr[64], state[32] = "";
+        int recv_q, send_q;
+        int n = sscanf(line, "%15s %d %d %63s %63s %31s",
+                       proto, &recv_q, &send_q, local_addr, remote_addr, state);
+        if (n < 5) continue;
+
+        NetworkConnection conn;
+        conn.protocol = "TCP";
+        conn.pid = 0;
+        conn.process_name = "Unknown";
+        parseNetstatAddr(std::string(local_addr), conn.local_ip, conn.local_port);
+        parseNetstatAddr(std::string(remote_addr), conn.remote_ip, conn.remote_port);
+        conn.state = (state[0] != '\0') ? std::string(state) : "UNKNOWN";
+        connections.push_back(conn);
     }
-    
-    char* buf = (char*)malloc(len);
-    if (sysctlbyname("net.inet.tcp.pcblist", buf, &len, NULL, 0) < 0) {
-        free(buf);
-        return connections;
-    }
-    
-    // Parse the buffer (simplified - actual parsing is complex)
-    // This is a basic implementation
-    free(buf);
+    pclose(fp);
     
 #else
     // Linux implementation (existing code)
@@ -210,9 +226,38 @@ std::vector<NetworkConnection> NetworkMonitor::parseUdpConnections() {
     }
     
 #elif defined(PLATFORM_MACOS)
-    // Similar to TCP, using sysctl for UDP
-    // Simplified implementation
-    
+    FILE* fp = popen("netstat -an -p udp 2>/dev/null", "r");
+    if (!fp) return connections;
+
+    auto parseNetstatAddr = [](const std::string& addr, std::string& ip, int& port) {
+        size_t last_dot = addr.rfind('.');
+        if (last_dot == std::string::npos) return;
+        ip = addr.substr(0, last_dot);
+        if (ip == "*") ip = "0.0.0.0";
+        try { port = std::stoi(addr.substr(last_dot + 1)); }
+        catch (...) { port = 0; }
+    };
+
+    char line[512];
+    while (fgets(line, sizeof(line), fp)) {
+        if (strncmp(line, "udp", 3) != 0) continue;
+        char proto[16], local_addr[64], remote_addr[64];
+        int recv_q, send_q;
+        int n = sscanf(line, "%15s %d %d %63s %63s",
+                       proto, &recv_q, &send_q, local_addr, remote_addr);
+        if (n < 4) continue;
+
+        NetworkConnection conn;
+        conn.protocol = "UDP";
+        conn.state = "ESTABLISHED";
+        conn.pid = 0;
+        conn.process_name = "Unknown";
+        parseNetstatAddr(std::string(local_addr), conn.local_ip, conn.local_port);
+        if (n >= 5) parseNetstatAddr(std::string(remote_addr), conn.remote_ip, conn.remote_port);
+        connections.push_back(conn);
+    }
+    pclose(fp);
+
 #else
     // Linux implementation (existing code)
     std::ifstream udp_file("/proc/net/udp");

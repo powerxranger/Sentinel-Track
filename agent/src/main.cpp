@@ -143,6 +143,11 @@ int main(int argc, char* argv[]) {
                     logger.logProcess(process);
                 }
                 last_process_log_time = current_time;
+
+                // Log all current connections so the dashboard count stays accurate
+                for (const auto& connection : current_connections) {
+                    logger.logNetworkConnection(connection);
+                }
                 
                 std::cout << "[STATS] CPU: " << system_stats.cpu_usage << "%, "
                          << "Memory: " << system_stats.memory_usage << "%, "

@@ -226,7 +226,8 @@ SystemStats EventLogger::getSystemStats() {
     SystemStats stats;
     stats.timestamp = getCurrentTimestamp();
     stats.cpu_usage = PlatformUtils::getCpuUsage();
-    stats.memory_usage = (double)PlatformUtils::getMemoryUsage() / (1024 * 1024) * 100; // Convert to percentage
+    long total_mem = PlatformUtils::getTotalMemory();
+    stats.memory_usage = total_mem > 0 ? (double)PlatformUtils::getMemoryUsage() / total_mem * 100.0 : 0.0;
     stats.load_average = PlatformUtils::getLoadAverage();
     stats.disk_usage = 50.0; // Placeholder - would need platform-specific disk usage code
     

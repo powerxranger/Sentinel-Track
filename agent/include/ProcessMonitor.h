@@ -21,7 +21,8 @@ private:
     std::unordered_map<int, ProcessInfo> previous_processes;
     std::unordered_map<int, unsigned long long> previous_cpu_times;
     unsigned long long previous_total_cpu_time;
-    
+    unsigned long long snapshot_total_cpu_time;
+
     ProcessInfo parseProcessInfo(int pid);
     unsigned long long getTotalCpuTime();
     unsigned long long getProcessCpuTime(int pid);

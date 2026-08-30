@@ -61,57 +61,33 @@ std::string getExecutablePath() {
 #endif
 }
 
-#ifdef PLATFORM_WINDOWS
-static ULARGE_INTEGER lastCPU, lastSysCPU, lastUserCPU;
-static int numProcessors;
-static HANDLE self;
-static bool initialized = false;
-
-void initCpuUsage() {
-    if (!initialized) {
-        SYSTEM_INFO sysInfo;
-        FILETIME ftime, fsys, fuser;
-        
-        GetSystemInfo(&sysInfo);
-        numProcessors = sysInfo.dwNumberOfProcessors;
-        
-        GetSystemTimeAsFileTime(&ftime);
-        memcpy(&lastCPU, &ftime, sizeof(FILETIME));
-        
-        self = GetCurrentProcess();
-        GetProcessTimes(self, &ftime, &ftime, &fsys, &fuser);
-        memcpy(&lastSysCPU, &fsys, sizeof(FILETIME));
-        memcpy(&lastUserCPU, &fuser, sizeof(FILETIME));
-        
-        initialized = true;
-    }
-}
-#endif
-
 double getCpuUsage() {
 #ifdef PLATFORM_WINDOWS
-    initCpuUsage();
-    
-    FILETIME ftime, fsys, fuser;
-    ULARGE_INTEGER now, sys, user;
-    double percent;
-    
-    GetSystemTimeAsFileTime(&ftime);
-    memcpy(&now, &ftime, sizeof(FILETIME));
-    
-    GetProcessTimes(self, &ftime, &ftime, &fsys, &fuser);
-    memcpy(&sys, &fsys, sizeof(FILETIME));
-    memcpy(&user, &fuser, sizeof(FILETIME));
-    
-    percent = (sys.QuadPart - lastSysCPU.QuadPart) + (user.QuadPart - lastUserCPU.QuadPart);
-    percent /= (now.QuadPart - lastCPU.QuadPart);
-    percent /= numProcessors;
-    
-    lastCPU = now;
-    lastUserCPU = user;
-    lastSysCPU = sys;
-    
-    return percent * 100;
+    FILETIME idleFt, kernelFt, userFt;
+    if (!GetSystemTimes(&idleFt, &kernelFt, &userFt)) return 0.0;
+
+    ULARGE_INTEGER idle, kernel, user;
+    idle.LowPart = idleFt.dwLowDateTime;   idle.HighPart = idleFt.dwHighDateTime;
+    kernel.LowPart = kernelFt.dwLowDateTime; kernel.HighPart = kernelFt.dwHighDateTime;
+    user.LowPart = userFt.dwLowDateTime;   user.HighPart = userFt.dwHighDateTime;
+
+    static ULARGE_INTEGER lastIdle = {}, lastKernel = {}, lastUser = {};
+
+    if (lastKernel.QuadPart == 0) {
+        lastIdle = idle; lastKernel = kernel; lastUser = user;
+        return 0.0;
+    }
+
+    unsigned long long idleDelta   = idle.QuadPart   - lastIdle.QuadPart;
+    unsigned long long kernelDelta = kernel.QuadPart - lastKernel.QuadPart;
+    unsigned long long userDelta   = user.QuadPart   - lastUser.QuadPart;
+
+    lastIdle = idle; lastKernel = kernel; lastUser = user;
+
+    unsigned long long total = kernelDelta + userDelta;
+    if (total == 0) return 0.0;
+    // kernelDelta includes idle time on Windows
+    return (double)(total - idleDelta) / total * 100.0;
     
 #elif defined(PLATFORM_MACOS)
     host_cpu_load_info_data_t cpuinfo;
@@ -215,6 +191,35 @@ long getMemoryUsage() {
     fclose(file);
     
     return total - available;
+#endif
+}
+
+long getTotalMemory() {
+#ifdef PLATFORM_WINDOWS
+    MEMORYSTATUSEX memInfo;
+    memInfo.dwLength = sizeof(MEMORYSTATUSEX);
+    GlobalMemoryStatusEx(&memInfo);
+    return (long)(memInfo.ullTotalPhys / 1024);
+
+#elif defined(PLATFORM_MACOS)
+    int mib[2] = {CTL_HW, HW_MEMSIZE};
+    uint64_t memsize;
+    size_t size = sizeof(memsize);
+    if (sysctl(mib, 2, &memsize, &size, NULL, 0) == 0) {
+        return (long)(memsize / 1024);
+    }
+    return 0;
+
+#else
+    FILE* file = fopen("/proc/meminfo", "r");
+    if (!file) return 0;
+    long total = 0;
+    char line[256];
+    while (fgets(line, sizeof(line), file)) {
+        if (sscanf(line, "MemTotal: %ld kB", &total) == 1) break;
+    }
+    fclose(file);
+    return total;
 #endif
 }
 

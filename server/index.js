@@ -162,7 +162,7 @@ app.get('/api/dashboard', (req, res) => {
           
           // Get network connection count
           db.get(
-            `SELECT COUNT(*) as connection_count FROM network_connections WHERE timestamp > datetime('now', '-1 minute')`,
+            `SELECT COUNT(DISTINCT local_ip || ':' || local_port || '-' || remote_ip || ':' || remote_port) as connection_count FROM network_connections WHERE timestamp > datetime('now', '-30 seconds')`,
             (err, row) => {
               if (err) {
                 res.status(500).json({ error: err.message });
