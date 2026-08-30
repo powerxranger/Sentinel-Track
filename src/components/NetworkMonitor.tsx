@@ -35,7 +35,7 @@ const NetworkMonitor: React.FC = () => {
     };
 
     fetchConnections();
-    const interval = setInterval(fetchConnections, 2000); // Update every 2 seconds
+    const interval = setInterval(fetchConnections, 2000);
 
     return () => clearInterval(interval);
   }, []);
@@ -297,7 +297,7 @@ const NetworkMonitor: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
-                      {new Date(connection.timestamp).toLocaleTimeString()}
+                      {new Date(connection.timestamp + 'Z').toLocaleTimeString()}
                     </td>
                   </tr>
                 );

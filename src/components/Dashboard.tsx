@@ -47,7 +47,7 @@ const Dashboard: React.FC = () => {
     };
 
     fetchData();
-    const interval = setInterval(fetchData, 2000); // Update every 2 seconds
+    const interval = setInterval(fetchData, 2000);
 
     return () => clearInterval(interval);
   }, []);
@@ -61,10 +61,10 @@ const Dashboard: React.FC = () => {
   }
 
   const formatTime = (timestamp: string) => {
-    return new Date(timestamp + 'Z').toLocaleTimeString('en-US', { 
-      hour12: false, 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return new Date(timestamp + 'Z').toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
@@ -211,29 +211,33 @@ const Dashboard: React.FC = () => {
 
         {/* Load Average Chart */}
         <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-          <h3 className="text-lg font-semibold text-white mb-4">System Load Average</h3>
+          <div className="flex items-baseline space-x-2 mb-4">
+            <h3 className="text-lg font-semibold text-white">System Load Average</h3>
+            <span className="text-sm text-slate-400">(CPU %)</span>
+          </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis 
-                  dataKey="time" 
-                  stroke="#9CA3AF" 
+                <XAxis
+                  dataKey="time"
+                  stroke="#9CA3AF"
                   fontSize={12}
                 />
-                <YAxis stroke="#9CA3AF" fontSize={12} />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#1F2937', 
+                <YAxis stroke="#9CA3AF" fontSize={12} domain={[0, 100]} unit="%" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1F2937',
                     border: '1px solid #374151',
                     borderRadius: '8px',
                     color: '#F9FAFB'
                   }}
+                  formatter={(value: number) => [`${value.toFixed(1)}%`, 'CPU Load']}
                 />
-                <Bar 
-                  dataKey="load" 
+                <Bar
+                  dataKey="load"
                   fill="#8B5CF6"
-                  name="Load Average"
+                  name="CPU Load %"
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>

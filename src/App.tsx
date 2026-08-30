@@ -21,7 +21,7 @@ function App() {
     };
 
     checkConnection();
-    const interval = setInterval(checkConnection, 5000); // Check every 5 seconds
+    const interval = setInterval(checkConnection, 5000);
 
     return () => clearInterval(interval);
   }, []);
@@ -54,7 +54,7 @@ function App() {
       <header className="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
               <div className="p-2 bg-blue-600 rounded-lg">
                 <Activity className="h-6 w-6 text-white" />
               </div>

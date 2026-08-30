@@ -314,58 +314,55 @@ double ProcessMonitor::calculateCpuUsage(int pid, unsigned long long current_cpu
     return (static_cast<double>(cpu_time_delta) / total_cpu_time_delta) * 100.0;
 }
 
+// Returns cached result from last updateProcessList() -- no recalculation to avoid double-call delta=0 bug
 std::vector<ProcessInfo> ProcessMonitor::getCurrentProcesses() {
     std::vector<ProcessInfo> processes;
-    auto pids = getAllPids();
-    
-    for (int pid : pids) {
-        try {
-            ProcessInfo info = parseProcessInfo(pid);
-            if (!info.name.empty() && info.name != "Unknown") {
-                processes.push_back(info);
-            }
-        } catch (const std::exception& e) {
-            continue;
-        }
+    processes.reserve(previous_processes.size());
+    for (const auto& pair : previous_processes) {
+        processes.push_back(pair.second);
     }
-    
     return processes;
 }
 
 std::vector<ProcessInfo> ProcessMonitor::getNewProcesses() {
     std::vector<ProcessInfo> new_processes;
-    auto current_processes = getCurrentProcesses();
-    
-    for (const auto& process : current_processes) {
-        if (previous_processes.find(process.pid) == previous_processes.end()) {
-            new_processes.push_back(process);
+    for (const auto& pair : previous_processes) {
+        if (previous_pid_set.find(pair.first) == previous_pid_set.end()) {
+            new_processes.push_back(pair.second);
         }
     }
-    
     return new_processes;
 }
 
 std::vector<int> ProcessMonitor::getTerminatedProcesses() {
     std::vector<int> terminated_pids;
-    auto current_pids = getAllPids();
-    std::set<int> current_pid_set(current_pids.begin(), current_pids.end());
-    
-    for (const auto& pair : previous_processes) {
-        if (current_pid_set.find(pair.first) == current_pid_set.end()) {
-            terminated_pids.push_back(pair.first);
+    for (int pid : previous_pid_set) {
+        if (previous_processes.find(pid) == previous_processes.end()) {
+            terminated_pids.push_back(pid);
         }
     }
-    
     return terminated_pids;
 }
 
 void ProcessMonitor::updateProcessList() {
-    snapshot_total_cpu_time = getTotalCpuTime();
-    previous_processes.clear();
-    auto current_processes = getCurrentProcesses();
+    // Save previous PIDs for new/terminated detection before overwriting
+    previous_pid_set.clear();
+    for (const auto& pair : previous_processes) {
+        previous_pid_set.insert(pair.first);
+    }
 
-    for (const auto& process : current_processes) {
-        previous_processes[process.pid] = process;
+    snapshot_total_cpu_time = getTotalCpuTime();
+
+    // Compute current processes with CPU deltas (single pass -- no second getCurrentProcesses() call)
+    auto pids = getAllPids();
+    previous_processes.clear();
+    for (int pid : pids) {
+        try {
+            ProcessInfo info = parseProcessInfo(pid);
+            if (!info.name.empty() && info.name != "Unknown") {
+                previous_processes[pid] = info;
+            }
+        } catch (...) {}
     }
 
     previous_total_cpu_time = snapshot_total_cpu_time;

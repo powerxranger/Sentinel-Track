@@ -68,7 +68,9 @@ std::vector<NetworkConnection> NetworkMonitor::parseTcpConnections() {
         conn.process_name = "Unknown";
         parseWinAddr(std::string(local), conn.local_ip, conn.local_port);
         parseWinAddr(std::string(remote), conn.remote_ip, conn.remote_port);
-        conn.state = state[0] ? std::string(state) : "UNKNOWN";
+        std::string raw_state = state[0] ? std::string(state) : "UNKNOWN";
+        // Windows netstat outputs "LISTENING"; normalize to "LISTEN" for consistency
+        conn.state = (raw_state == "LISTENING") ? "LISTEN" : raw_state;
         connections.push_back(conn);
     }
     pclose(fp);

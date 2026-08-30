@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <set>
 
 struct ProcessInfo {
     int pid;
@@ -20,6 +21,7 @@ class ProcessMonitor {
 private:
     std::unordered_map<int, ProcessInfo> previous_processes;
     std::unordered_map<int, unsigned long long> previous_cpu_times;
+    std::set<int> previous_pid_set;
     unsigned long long previous_total_cpu_time;
     unsigned long long snapshot_total_cpu_time;
 

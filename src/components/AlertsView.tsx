@@ -32,7 +32,7 @@ const AlertsView: React.FC = () => {
     };
 
     fetchAlerts();
-    const interval = setInterval(fetchAlerts, 3000); // Update every 3 seconds
+    const interval = setInterval(fetchAlerts, 3000);
 
     return () => clearInterval(interval);
   }, []);
@@ -104,7 +104,7 @@ const AlertsView: React.FC = () => {
   };
 
   const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
+    const date = new Date(timestamp + 'Z');
     const now = new Date();
     const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
     

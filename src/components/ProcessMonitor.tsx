@@ -251,7 +251,7 @@ const ProcessMonitor: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
-                    {new Date(process.timestamp).toLocaleTimeString()}
+                    {new Date(process.timestamp + 'Z').toLocaleTimeString()}
                   </td>
                 </tr>
               ))}
